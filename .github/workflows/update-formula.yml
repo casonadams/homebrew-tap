@@ -1,0 +1,91 @@
+name: Update Formula
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [rho-release]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch latest rho release
+        id: release
+        run: |
+          RELEASE_JSON=$(curl -sL https://api.github.com/repos/casonadams/rho/releases/latest)
+          TAG=$(echo "$RELEASE_JSON" | jq -r .tag_name)
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "Failed to fetch latest tag"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          curl -sL "https://github.com/casonadams/rho/releases/download/${TAG}/SHA256SUMS" -o SHA256SUMS
+
+      - name: Generate formula
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          VERSION="${{ steps.release.outputs.version }}"
+
+          AARCH64_DARWIN_SHA=$(grep "rho-.*-aarch64-apple-darwin\.tar\.gz" SHA256SUMS | awk '{print $1}')
+          X86_64_DARWIN_SHA=$(grep "rho-.*-x86_64-apple-darwin\.tar\.gz" SHA256SUMS | awk '{print $1}')
+          AARCH64_LINUX_SHA=$(grep "rho-.*-aarch64-unknown-linux-gnu\.tar\.gz" SHA256SUMS | awk '{print $1}')
+          X86_64_LINUX_SHA=$(grep "rho-.*-x86_64-unknown-linux-gnu\.tar\.gz" SHA256SUMS | awk '{print $1}')
+
+          mkdir -p Formula
+          cat << FORMULA > Formula/rho.rb
+class Rho < Formula
+  desc "Minimal agentic coding CLI harness in Rust"
+  homepage "https://github.com/casonadams/rho"
+  version "${VERSION}"
+  license any_of: ["MIT", "Apache-2.0"]
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/casonadams/rho/releases/download/${TAG}/rho-${VERSION}-aarch64-apple-darwin.tar.gz"
+      sha256 "${AARCH64_DARWIN_SHA}"
+    else
+      url "https://github.com/casonadams/rho/releases/download/${TAG}/rho-${VERSION}-x86_64-apple-darwin.tar.gz"
+      sha256 "${X86_64_DARWIN_SHA}"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/casonadams/rho/releases/download/${TAG}/rho-${VERSION}-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "${AARCH64_LINUX_SHA}"
+    else
+      url "https://github.com/casonadams/rho/releases/download/${TAG}/rho-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "${X86_64_LINUX_SHA}"
+    end
+  end
+
+  def install
+    bin.install "rho"
+  end
+
+  test do
+    assert_match "rho #{version}", shell_output("#{bin}/rho --version")
+  end
+end
+FORMULA
+          rm -f SHA256SUMS
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/rho.rb
+          if git diff --staged --quiet; then
+            echo "Formula is already up to date"
+          else
+            git commit -m "chore: update rho formula to ${{ steps.release.outputs.tag }}"
+            git push
+          fi
