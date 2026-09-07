@@ -1,8 +1,6 @@
 name: Update Formula
 
 on:
-  schedule:
-    - cron: "0 0 * * 0" # Once a week on Sunday
   workflow_dispatch:
   repository_dispatch:
     types: [rho-release]
