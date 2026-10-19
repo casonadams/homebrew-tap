@@ -282,9 +282,11 @@ jobs:
           fi
           %files
           /usr/bin/${pkg}
-          %optional /usr/share/man/man1/${pkg}.1.gz
           EOF
               sed -i 's/^          //' "$rpm_top/SPECS/${pkg}.spec"
+              if [ -f "$work/extracted/${pkg}.1" ]; then
+                echo "/usr/share/man/man1/${pkg}.1.gz" >> "$rpm_top/SPECS/${pkg}.spec"
+              fi
               rpmbuild -bb --target "$rpm_arch" --define "_topdir $rpm_top" "$rpm_top/SPECS/${pkg}.spec"
               cp "$rpm_top/RPMS/$rpm_arch/"*.rpm "$SITE/rpm/${rpm_file}"
               rm -rf "$work"
