@@ -7,7 +7,8 @@ on:
 
 permissions:
   contents: write
-
+  pages: write
+  id-token: write
 jobs:
   update-rho:
     name: "Update rho formula"
@@ -156,6 +157,7 @@ jobs:
 
             def install
               bin.install "ripwire-rs"
+              man1.install "ripwire-rs.1" if File.exist?("ripwire-rs.1")
             end
 
             test do
@@ -176,3 +178,180 @@ jobs:
             git commit -m "chore: update ripwire-rs formula to ${{ steps.release.outputs.tag }}"
             git push
           fi
+
+  publish-linux-repos:
+    name: "Publish APT & RPM Repositories to GitHub Pages"
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Install packaging & repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev apt-utils rpm createrepo-c jq
+
+      - name: Build APT and RPM repositories for ripwire-rs and rho
+        run: |
+          set -euo pipefail
+          SITE="$(pwd)/_site"
+          mkdir -p "$SITE/apt/pool/main" \
+                   "$SITE/apt/dists/stable/main/binary-amd64" \
+                   "$SITE/apt/dists/stable/main/binary-arm64" \
+                   "$SITE/rpm"
+
+          package_repo() {
+            local pkg="$1"
+            local desc="$2"
+            local license="$3"
+            local rel_json
+            rel_json="$(curl -sfL "https://api.github.com/repos/casonadams/${pkg}/releases/latest")" || return 0
+            local tag version
+            tag="$(echo "$rel_json" | jq -r .tag_name)"
+            [ -n "$tag" ] && [ "$tag" != "null" ] || return 0
+            version="${tag#v}"
+
+            for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
+              local deb_arch rpm_arch
+              if [[ "$target" == x86_64-* ]]; then
+                deb_arch="amd64"; rpm_arch="x86_64"
+              else
+                deb_arch="arm64"; rpm_arch="aarch64"
+              fi
+
+              local deb_file="${pkg}_${version}_${deb_arch}.deb"
+              local rpm_file="${pkg}-${version}-1.${rpm_arch}.rpm"
+              local base_url="https://github.com/casonadams/${pkg}/releases/download/${tag}"
+
+              if curl -sfL "${base_url}/${deb_file}" -o "$SITE/apt/pool/main/${deb_file}" && \
+                 curl -sfL "${base_url}/${rpm_file}" -o "$SITE/rpm/${rpm_file}"; then
+                continue
+              fi
+
+              local tar_url="${base_url}/${pkg}-${version}-${target}.tar.gz"
+              local work
+              work="$(mktemp -d)"
+              if ! curl -sfL "$tar_url" -o "$work/pkg.tar.gz"; then
+                rm -rf "$work"
+                continue
+              fi
+              mkdir -p "$work/extracted"
+              tar xzf "$work/pkg.tar.gz" -C "$work/extracted"
+
+              # Synthesize .deb
+              local deb_root="$work/deb"
+              mkdir -p "$deb_root/DEBIAN" "$deb_root/usr/bin"
+              install -m 755 "$work/extracted/${pkg}" "$deb_root/usr/bin/${pkg}"
+              if [ -f "$work/extracted/${pkg}.1" ]; then
+                mkdir -p "$deb_root/usr/share/man/man1"
+                gzip -9n -c "$work/extracted/${pkg}.1" > "$deb_root/usr/share/man/man1/${pkg}.1.gz"
+              fi
+              cat > "$deb_root/DEBIAN/control" <<EOF
+          Package: ${pkg}
+          Version: ${version}
+          Section: devel
+          Priority: optional
+          Architecture: ${deb_arch}
+          Maintainer: Cason Adams <casonadams@users.noreply.github.com>
+          Homepage: https://github.com/casonadams/${pkg}
+          Description: ${desc}
+          EOF
+              sed -i 's/^          //' "$deb_root/DEBIAN/control"
+              dpkg-deb --build --root-owner-group "$deb_root" "$SITE/apt/pool/main/${deb_file}"
+
+              # Synthesize .rpm
+              local rpm_top="$work/rpm"
+              mkdir -p "$rpm_top/BUILD" "$rpm_top/RPMS" "$rpm_top/SOURCES" "$rpm_top/SPECS" "$rpm_top/SRPMS"
+              cat > "$rpm_top/SPECS/${pkg}.spec" <<EOF
+          %define _build_id_links none
+          Name: ${pkg}
+          Version: ${version}
+          Release: 1
+          Summary: ${desc}
+          License: ${license}
+          URL: https://github.com/casonadams/${pkg}
+          AutoReqProv: no
+          %description
+          ${desc}
+          %install
+          mkdir -p %{buildroot}/usr/bin
+          install -m 755 "$work/extracted/${pkg}" %{buildroot}/usr/bin/${pkg}
+          if [ -f "$work/extracted/${pkg}.1" ]; then
+            mkdir -p %{buildroot}/usr/share/man/man1
+            gzip -9n -c "$work/extracted/${pkg}.1" > %{buildroot}/usr/share/man/man1/${pkg}.1.gz
+          fi
+          %files
+          /usr/bin/${pkg}
+          %optional /usr/share/man/man1/${pkg}.1.gz
+          EOF
+              sed -i 's/^          //' "$rpm_top/SPECS/${pkg}.spec"
+              rpmbuild -bb --target "$rpm_arch" --define "_topdir $rpm_top" "$rpm_top/SPECS/${pkg}.spec"
+              cp "$rpm_top/RPMS/$rpm_arch/"*.rpm "$SITE/rpm/${rpm_file}"
+              rm -rf "$work"
+            done
+          }
+
+          package_repo "ripwire-rs" "High-throughput agent context router and deterministic static analysis engine" "Apache-2.0"
+          package_repo "rho" "Minimal agentic coding CLI harness in Rust" "MIT OR Apache-2.0"
+
+          # Generate APT metadata
+          (
+            cd "$SITE/apt"
+            dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+            gzip -9n -c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+            dpkg-scanpackages --arch arm64 pool/ > dists/stable/main/binary-arm64/Packages
+            gzip -9n -c dists/stable/main/binary-arm64/Packages > dists/stable/main/binary-arm64/Packages.gz
+            cd dists/stable
+            apt-ftparchive \
+              -o APT::FTPArchive::Release::Origin="casonadams" \
+              -o APT::FTPArchive::Release::Label="casonadams" \
+              -o APT::FTPArchive::Release::Suite="stable" \
+              -o APT::FTPArchive::Release::Codename="stable" \
+              -o APT::FTPArchive::Release::Architectures="amd64 arm64" \
+              -o APT::FTPArchive::Release::Components="main" \
+              release . > Release
+          )
+
+          # Generate RPM metadata & .repo file
+          createrepo_c "$SITE/rpm"
+          cat > "$SITE/rpm/casonadams.repo" <<'EOF'
+          [casonadams]
+          name=Cason Adams Packages (ripwire-rs, rho)
+          baseurl=https://casonadams.github.io/homebrew-tap/rpm
+          enabled=1
+          gpgcheck=0
+          EOF
+          sed -i 's/^          //' "$SITE/rpm/casonadams.repo"
+
+          cat > "$SITE/index.html" <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>casonadams Package Repository</title></head>
+          <body>
+            <h1>casonadams Package Repository (Homebrew, APT, RPM)</h1>
+            <h2>Homebrew (macOS &amp; Linux)</h2>
+            <pre>brew install casonadams/tap/ripwire-rs casonadams/tap/rho</pre>
+            <h2>APT (Ubuntu &amp; Debian)</h2>
+            <pre>echo "deb [trusted=yes] https://casonadams.github.io/homebrew-tap/apt stable main" | sudo tee /etc/apt/sources.list.d/casonadams.list
+          sudo apt update &amp;&amp; sudo apt install ripwire-rs rho</pre>
+            <h2>DNF / RPM (Fedora, RHEL &amp; CentOS)</h2>
+            <pre>sudo dnf config-manager --add-repo https://casonadams.github.io/homebrew-tap/rpm/casonadams.repo
+          sudo dnf install ripwire-rs rho</pre>
+          </body>
+          </html>
+          EOF
+          sed -i 's/^          //' "$SITE/index.html"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

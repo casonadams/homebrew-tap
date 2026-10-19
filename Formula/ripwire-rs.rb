@@ -26,6 +26,7 @@ class RipwireRs < Formula
 
   def install
     bin.install "ripwire-rs"
+    man1.install "ripwire-rs.1" if File.exist?("ripwire-rs.1")
   end
 
   test do

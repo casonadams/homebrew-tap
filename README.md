@@ -1,19 +1,25 @@
-# homebrew-tap
+# homebrew-tap & Linux Package Repository
 
-Official Homebrew tap for [`rho`](https://github.com/casonadams/rho) and [`ripwire-rs`](https://github.com/casonadams/ripwire-rs).
+Official Homebrew tap, APT repository, and RPM repository for [`ripwire-rs`](https://github.com/casonadams/ripwire-rs) and [`rho`](https://github.com/casonadams/rho).
 
-## Installation
+## Homebrew (macOS & Linux)
 
 ```sh
 brew install casonadams/tap/ripwire-rs
-# or
 brew install casonadams/tap/rho
 ```
 
-## Update
+## APT (Ubuntu & Debian — `amd64` & `arm64`)
 
 ```sh
-brew update
-brew upgrade ripwire-rs
-brew upgrade rho
+echo "deb [trusted=yes] https://casonadams.github.io/homebrew-tap/apt stable main" | sudo tee /etc/apt/sources.list.d/casonadams.list
+sudo apt update
+sudo apt install ripwire-rs rho
+```
+
+## DNF / RPM (Fedora, RHEL & CentOS — `x86_64` & `aarch64`)
+
+```sh
+sudo dnf config-manager --add-repo https://casonadams.github.io/homebrew-tap/rpm/casonadams.repo
+sudo dnf install ripwire-rs rho
 ```
