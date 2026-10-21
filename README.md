@@ -20,6 +20,6 @@ sudo apt install ripwire-rs rho
 ## DNF / RPM (Fedora, RHEL & CentOS — `x86_64` & `aarch64`)
 
 ```sh
-sudo dnf config-manager --add-repo https://casonadams.github.io/homebrew-tap/rpm/casonadams.repo
+curl -fsSL https://casonadams.github.io/homebrew-tap/rpm/casonadams.repo | sudo tee /etc/yum.repos.d/casonadams.repo
 sudo dnf install ripwire-rs rho
 ```

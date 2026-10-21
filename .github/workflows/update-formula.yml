@@ -157,7 +157,11 @@ jobs:
 
             def install
               bin.install "ripwire-rs"
-              man1.install "ripwire-rs.1" if File.exist?("ripwire-rs.1")
+              bin.install_symlink "ripwire-rs" => "rw"
+              if File.exist?("ripwire-rs.1")
+                man1.install "ripwire-rs.1"
+                man1.install_symlink "ripwire-rs.1" => "rw.1"
+              end
             end
 
             test do
@@ -242,9 +246,15 @@ jobs:
               local deb_root="$work/deb"
               mkdir -p "$deb_root/DEBIAN" "$deb_root/usr/bin"
               install -m 755 "$work/extracted/${pkg}" "$deb_root/usr/bin/${pkg}"
+              if [ "$pkg" = "ripwire-rs" ]; then
+                ln -s ripwire-rs "$deb_root/usr/bin/rw"
+              fi
               if [ -f "$work/extracted/${pkg}.1" ]; then
                 mkdir -p "$deb_root/usr/share/man/man1"
                 gzip -9n -c "$work/extracted/${pkg}.1" > "$deb_root/usr/share/man/man1/${pkg}.1.gz"
+                if [ "$pkg" = "ripwire-rs" ]; then
+                  ln -s ripwire-rs.1.gz "$deb_root/usr/share/man/man1/rw.1.gz"
+                fi
               fi
               cat > "$deb_root/DEBIAN/control" <<EOF
           Package: ${pkg}
@@ -276,16 +286,28 @@ jobs:
           %install
           mkdir -p %{buildroot}/usr/bin
           install -m 755 "$work/extracted/${pkg}" %{buildroot}/usr/bin/${pkg}
+          if [ "$pkg" = "ripwire-rs" ]; then
+            ln -s ripwire-rs %{buildroot}/usr/bin/rw
+          fi
           if [ -f "$work/extracted/${pkg}.1" ]; then
             mkdir -p %{buildroot}/usr/share/man/man1
             gzip -9n -c "$work/extracted/${pkg}.1" > %{buildroot}/usr/share/man/man1/${pkg}.1.gz
+            if [ "$pkg" = "ripwire-rs" ]; then
+              ln -s ripwire-rs.1.gz %{buildroot}/usr/share/man/man1/rw.1.gz
+            fi
           fi
           %files
           /usr/bin/${pkg}
           EOF
               sed -i 's/^          //' "$rpm_top/SPECS/${pkg}.spec"
+              if [ "$pkg" = "ripwire-rs" ]; then
+                echo "/usr/bin/rw" >> "$rpm_top/SPECS/${pkg}.spec"
+              fi
               if [ -f "$work/extracted/${pkg}.1" ]; then
                 echo "/usr/share/man/man1/${pkg}.1.gz" >> "$rpm_top/SPECS/${pkg}.spec"
+                if [ "$pkg" = "ripwire-rs" ]; then
+                  echo "/usr/share/man/man1/rw.1.gz" >> "$rpm_top/SPECS/${pkg}.spec"
+                fi
               fi
               rpmbuild -bb --target "$rpm_arch" --define "_topdir $rpm_top" "$rpm_top/SPECS/${pkg}.spec"
               cp "$rpm_top/RPMS/$rpm_arch/"*.rpm "$SITE/rpm/${rpm_file}"
@@ -322,6 +344,7 @@ jobs:
           baseurl=https://casonadams.github.io/homebrew-tap/rpm
           enabled=1
           gpgcheck=0
+          metadata_expire=300
           EOF
           sed -i 's/^          //' "$SITE/rpm/casonadams.repo"
 
@@ -337,7 +360,7 @@ jobs:
             <pre>echo "deb [trusted=yes] https://casonadams.github.io/homebrew-tap/apt stable main" | sudo tee /etc/apt/sources.list.d/casonadams.list
           sudo apt update &amp;&amp; sudo apt install ripwire-rs rho</pre>
             <h2>DNF / RPM (Fedora, RHEL &amp; CentOS)</h2>
-            <pre>sudo dnf config-manager --add-repo https://casonadams.github.io/homebrew-tap/rpm/casonadams.repo
+            <pre>curl -fsSL https://casonadams.github.io/homebrew-tap/rpm/casonadams.repo | sudo tee /etc/yum.repos.d/casonadams.repo
           sudo dnf install ripwire-rs rho</pre>
           </body>
           </html>
