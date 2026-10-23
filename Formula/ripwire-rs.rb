@@ -1,26 +1,26 @@
 class RipwireRs < Formula
   desc "High-throughput agent context router and deterministic static analysis engine"
   homepage "https://github.com/casonadams/ripwire-rs"
-  version "0.6.3"
+  version "0.6.5"
   license "Apache-2.0"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.3/ripwire-rs-0.6.3-aarch64-apple-darwin.tar.gz"
-      sha256 "8b0ea2d657d344a994cbc9d4a1cf42df7009309b9300759658ded9e446d8bf81"
+      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.5/ripwire-rs-0.6.5-aarch64-apple-darwin.tar.gz"
+      sha256 "db0e59880e653c867535474b6fc87879cccfc9c1a634f400f79bf1f74bc82c1a"
     else
-      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.3/ripwire-rs-0.6.3-x86_64-apple-darwin.tar.gz"
-      sha256 "cbf4bf2fed7dd9e9e5debcbe47d27920917d269d80d65cb4ae5aefa51fa42b08"
+      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.5/ripwire-rs-0.6.5-x86_64-apple-darwin.tar.gz"
+      sha256 "81727a8d64bd3184329d74d3f6eec0f6a09aff54567b3cda41deaf5e9e515d00"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.3/ripwire-rs-0.6.3-aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "3ffbaa21a50da413534aff8773f61fbd4c2dc7ecdf427a95757fe6c1f4219e9a"
+      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.5/ripwire-rs-0.6.5-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "099714b2f7066f76556e17f17f3f18444af48dba858cd503a938ae3d85b70953"
     else
-      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.3/ripwire-rs-0.6.3-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "bf9a7cc3660228872b41d0f5d561f5c1de7ae57c438396e2274057d4005e79ad"
+      url "https://github.com/casonadams/ripwire-rs/releases/download/v0.6.5/ripwire-rs-0.6.5-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "bd90d81f866edb5bf99c6b4f4ed0171744a2c047ab03f6de55296d479b4ed35b"
     end
   end
 
