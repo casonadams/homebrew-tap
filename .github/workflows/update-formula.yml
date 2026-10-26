@@ -3,7 +3,7 @@ name: Update Formula
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [rho-release, ripwire-release, ripwire-rs-release]
+    types: [rho-release, ripwire-release, ripwire-rs-release, mpx-release]
 
 permissions:
   contents: write
@@ -183,6 +183,91 @@ jobs:
             git push
           fi
 
+  update-mpx:
+    name: "Update mpx formula"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.action == 'mpx-release'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch latest mpx release
+        id: release
+        run: |
+          TAG="${{ github.event.client_payload.tag }}"
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            RELEASE_JSON=$(curl -sL https://api.github.com/repos/casonadams/mpx/releases/latest)
+            TAG=$(echo "$RELEASE_JSON" | jq -r .tag_name)
+          fi
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "Failed to fetch latest tag"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          curl -sL "https://github.com/casonadams/mpx/releases/download/${TAG}/SHA256SUMS" -o SHA256SUMS
+
+      - name: Generate formula
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          VERSION="${{ steps.release.outputs.version }}"
+
+          AARCH64_DARWIN_SHA=$(grep "mpx-.*-aarch64-apple-darwin\.tar\.gz" SHA256SUMS | awk '{print $1}')
+          X86_64_DARWIN_SHA=$(grep "mpx-.*-x86_64-apple-darwin\.tar\.gz" SHA256SUMS | awk '{print $1}')
+          AARCH64_LINUX_SHA=$(grep "mpx-.*-aarch64-unknown-linux-gnu\.tar\.gz" SHA256SUMS | awk '{print $1}')
+          X86_64_LINUX_SHA=$(grep "mpx-.*-x86_64-unknown-linux-gnu\.tar\.gz" SHA256SUMS | awk '{print $1}')
+
+          mkdir -p Formula
+          cat << FORMULA | sed 's/^          //' > Formula/mpx.rb
+          class Mpx < Formula
+            desc "Simple, performant process and stream multiplexer in Rust"
+            homepage "https://github.com/casonadams/mpx"
+            version "${VERSION}"
+            license "Apache-2.0"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/casonadams/mpx/releases/download/${TAG}/mpx-${VERSION}-aarch64-apple-darwin.tar.gz"
+                sha256 "${AARCH64_DARWIN_SHA}"
+              else
+                url "https://github.com/casonadams/mpx/releases/download/${TAG}/mpx-${VERSION}-x86_64-apple-darwin.tar.gz"
+                sha256 "${X86_64_DARWIN_SHA}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/casonadams/mpx/releases/download/${TAG}/mpx-${VERSION}-aarch64-unknown-linux-gnu.tar.gz"
+                sha256 "${AARCH64_LINUX_SHA}"
+              else
+                url "https://github.com/casonadams/mpx/releases/download/${TAG}/mpx-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+                sha256 "${X86_64_LINUX_SHA}"
+              end
+            end
+
+            def install
+              bin.install "mpx"
+            end
+
+            test do
+              assert_match "mpx #{version}", shell_output("#{bin}/mpx --version")
+            end
+          end
+          FORMULA
+
+          rm -f SHA256SUMS
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/mpx.rb
+          if git diff --staged --quiet; then
+            echo "Formula is already up to date"
+          else
+            git commit -m "chore: update mpx formula to ${{ steps.release.outputs.tag }}"
+            git push
+          fi
+
   publish-linux-repos:
     name: "Publish APT & RPM Repositories to GitHub Pages"
     runs-on: ubuntu-latest
@@ -317,6 +402,7 @@ jobs:
 
           package_repo "ripwire-rs" "High-throughput agent context router and deterministic static analysis engine" "Apache-2.0"
           package_repo "rho" "Minimal agentic coding CLI harness in Rust" "MIT OR Apache-2.0"
+          package_repo "mpx" "Simple, performant process and stream multiplexer in Rust" "Apache-2.0"
 
           # Generate APT metadata
           (
@@ -355,13 +441,13 @@ jobs:
           <body>
             <h1>casonadams Package Repository (Homebrew, APT, RPM)</h1>
             <h2>Homebrew (macOS &amp; Linux)</h2>
-            <pre>brew install casonadams/tap/ripwire-rs casonadams/tap/rho</pre>
+            <pre>brew install casonadams/tap/mpx casonadams/tap/ripwire-rs casonadams/tap/rho</pre>
             <h2>APT (Ubuntu &amp; Debian)</h2>
             <pre>echo "deb [trusted=yes] https://casonadams.github.io/homebrew-tap/apt stable main" | sudo tee /etc/apt/sources.list.d/casonadams.list
-          sudo apt update &amp;&amp; sudo apt install ripwire-rs rho</pre>
+          sudo apt update &amp;&amp; sudo apt install mpx ripwire-rs rho</pre>
             <h2>DNF / RPM (Fedora, RHEL &amp; CentOS)</h2>
             <pre>curl -fsSL https://casonadams.github.io/homebrew-tap/rpm/casonadams.repo | sudo tee /etc/yum.repos.d/casonadams.repo
-          sudo dnf install ripwire-rs rho</pre>
+          sudo dnf install mpx ripwire-rs rho</pre>
           </body>
           </html>
           EOF
