@@ -1,26 +1,26 @@
 class Rho < Formula
   desc "Minimal agentic coding CLI harness in Rust"
   homepage "https://github.com/casonadams/rho"
-  version "0.12.1"
+  version "0.12.2"
   license any_of: ["MIT", "Apache-2.0"]
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/casonadams/rho/releases/download/v0.12.1/rho-0.12.1-aarch64-apple-darwin.tar.gz"
-      sha256 "1def45486147667985d2988f8a8b40d00098e60c64d481886496c7b4fce0552a"
+      url "https://github.com/casonadams/rho/releases/download/v0.12.2/rho-0.12.2-aarch64-apple-darwin.tar.gz"
+      sha256 "b2ebc64168c01ffd6acb3680bf2deb65851a43d945d763842edd1d8b45cb5853"
     else
-      url "https://github.com/casonadams/rho/releases/download/v0.12.1/rho-0.12.1-x86_64-apple-darwin.tar.gz"
-      sha256 "24c1175221e95166cbf985be172f1dd8216ab0d0bddb729df2e6bdd5533530d5"
+      url "https://github.com/casonadams/rho/releases/download/v0.12.2/rho-0.12.2-x86_64-apple-darwin.tar.gz"
+      sha256 "ec6e6c3d6be04daff2a1adb8125d2c5436b6895212d7de62690332a20b92628a"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/casonadams/rho/releases/download/v0.12.1/rho-0.12.1-aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "14ad7d874ac7c8c41e61ac15e6b8f738e317718aa7879ece349004cfde1f2476"
+      url "https://github.com/casonadams/rho/releases/download/v0.12.2/rho-0.12.2-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "fcc05781f79a7b2c19ed2e00b94273b7379654c64fdf436a3d5801634359e558"
     else
-      url "https://github.com/casonadams/rho/releases/download/v0.12.1/rho-0.12.1-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "d5fb36ff5c12d5230fe6edc445172c2403852514a960dccd65a301ded91b0582"
+      url "https://github.com/casonadams/rho/releases/download/v0.12.2/rho-0.12.2-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "40d20a2aef89eb139b45a93158ba3777aa7fd597d945544d297cdf8fe91effb5"
     end
   end
 
