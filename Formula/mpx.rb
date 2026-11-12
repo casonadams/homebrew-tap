@@ -1,26 +1,26 @@
 class Mpx < Formula
   desc "Simple, performant process and stream multiplexer in Rust"
   homepage "https://github.com/casonadams/mpx"
-  version "0.3.0"
+  version "0.3.1"
   license "Apache-2.0"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/casonadams/mpx/releases/download/v0.3.0/mpx-0.3.0-aarch64-apple-darwin.tar.gz"
-      sha256 "93fae902d72f1ce0c7a074eb99d918fcf9e6135138a3592e79aa9efdb20a791e"
+      url "https://github.com/casonadams/mpx/releases/download/v0.3.1/mpx-0.3.1-aarch64-apple-darwin.tar.gz"
+      sha256 "be0f4bea88d7dbb5a8019cdc409e6c3712c8c92262bf3b37c186c29a7b8c5d78"
     else
-      url "https://github.com/casonadams/mpx/releases/download/v0.3.0/mpx-0.3.0-x86_64-apple-darwin.tar.gz"
-      sha256 "b2f475717d1424669908fef17a35dfadda04a7bc58aeaeadf0971ae39a1f85ca"
+      url "https://github.com/casonadams/mpx/releases/download/v0.3.1/mpx-0.3.1-x86_64-apple-darwin.tar.gz"
+      sha256 "21798c0babc43dd12dee4c3a860e7a888ad3642d2d016f3ad3cbade46c94ddd5"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/casonadams/mpx/releases/download/v0.3.0/mpx-0.3.0-aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "2b2f1bde10940436238330e4d225aac1bc5990e5b7085e2282e258e67f705633"
+      url "https://github.com/casonadams/mpx/releases/download/v0.3.1/mpx-0.3.1-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "cc6fd77a8956453e1afa19ae1b6782016a0e879585ff7eee53de9594ee3b89b7"
     else
-      url "https://github.com/casonadams/mpx/releases/download/v0.3.0/mpx-0.3.0-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "493a34c69c4cc896abaf00e27cad6b386b1a7b9bcc4d964c1718365d27e9ca0d"
+      url "https://github.com/casonadams/mpx/releases/download/v0.3.1/mpx-0.3.1-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "2af5a0e69cf03afb0600c66dc65fe8bd350bc390017f5a28609ae985969046c5"
     end
   end
 
