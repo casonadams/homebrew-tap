@@ -269,11 +269,8 @@ jobs:
           fi
 
   publish-linux-repos:
-    name: "Publish APT & RPM Repositories to GitHub Pages"
+    name: "Build APT & RPM Repositories"
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Install packaging & repository tools
         run: |
@@ -463,6 +460,17 @@ jobs:
         with:
           path: '_site'
 
+  deploy-pages:
+    name: "Deploy APT & RPM Repositories to GitHub Pages"
+    needs: publish-linux-repos
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
